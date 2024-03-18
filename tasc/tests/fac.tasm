@@ -1,0 +1,20 @@
+push      2
+loada     [sb+0]
+call      getint
+load      1, [sb+0]
+call      dec
+store     1, [sb+1]
+load      1, [sb+1]
+jumpif    0, [cb+16]
+load      1, [sb+0]
+load      1, [sb+1]
+call      mul
+store     1, [sb+0]
+load      1, [sb+1]
+call      dec
+store     1, [sb+1]
+jump      [cb+6]
+load      1, [sb+0]
+call      putint
+call      puteol
+halt

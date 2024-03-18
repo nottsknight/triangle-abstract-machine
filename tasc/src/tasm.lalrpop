@@ -1,0 +1,112 @@
+use crate::InstrData;
+use std::str::FromStr;
+
+grammar;
+
+pub Program = Instruction+;
+
+pub Instruction = {
+  Load, LoadA, LoadI, LoadL,
+  Store, StoreI,
+  Call, CallI, Return,
+  Push, Pop,
+  Jump, JumpI, JumpIf,
+  Halt
+  };
+
+Load: InstrData = "load" <n:Num> "," <dr:Addr> => (0, dr.1, n as u8, dr.0);
+
+LoadA: InstrData = "loada" <Addr> => (1, <>.1, 0, <>.0);
+
+LoadI: InstrData = "loadi" <Num> => (2, 0, <> as u8, 0);
+
+LoadL: InstrData = "loadl" <Num> => (3, 0, 0, <> as i16);
+
+Store: InstrData = "store" <n:Num> "," <dr:Addr> => (4, dr.1, n as u8, dr.0);
+
+StoreI: InstrData = "storei" <Num> => (5, 0, <> as u8, 0);
+
+Call: InstrData = {
+    "call" <Builtin> => (6, <>.1, 0, <>.0),
+    "call" <n:Reg> "," <dr:Addr> => (6, dr.1, n as u8, dr.0),
+  };
+
+CallI: InstrData = "calli" => (7, 0, 0, 0);
+
+Return: InstrData = "return" <n:Num> "," <d:Num> => (8, 0, n as u8, d as i16);
+
+Push: InstrData = "push" <Num> => (10, 0, 0, <> as i16);
+
+Pop: InstrData = "pop" <n:Num> "," <d:Num> => (11, 0, n as u8, d as i16);
+
+Jump: InstrData = "jump" <Addr> => (12, <>.1, 0, <>.0);
+
+JumpI: InstrData = "jumpi" => (13, 0, 0, 0);
+
+JumpIf: InstrData = "jumpif" <n:Num> "," <dr:Addr> => (14, dr.1, n as u8, dr.0);
+
+Halt: InstrData = "halt" => (15, 0, 0, 0);
+
+CallArg = {Addr, Builtin};
+
+Addr: (i16, u8) = "[" <r:Reg> <d:Offset> "]" => (d as i16, r);
+
+Offset: i16 = {
+    "+" <Num> => <> as i16,
+    "-" <Num> => (<> as i16) * -1,
+  };
+
+Builtin: (i16, u8) = {
+    "id" => (1, 2),
+    "not" => (2, 2),
+    "and" => (3, 2),
+    "or" => (4, 2),
+    "inc" => (5, 2),
+    "dec" => (6, 2),
+    "neg" => (7, 2),
+    "add" => (8, 2),
+    "sub" => (9, 2),
+    "mul" => (10, 2),
+    "div" => (11, 2),
+    "mod" => (12, 2),
+    "lt" => (13, 2),
+    "le" => (14, 2),
+    "ge" => (15, 2),
+    "gt" => (16, 2),
+    "eq" => (17, 2),
+    "ne" => (18, 2),
+    "eol" => (19, 2),
+    "eof" => (20, 2),
+    "get" => (21, 2),
+    "put" => (22, 2),
+    "geteol" => (23, 2),
+    "puteol" => (24, 2),
+    "getint" => (25, 2),
+    "putint" => (26, 2),
+    "new" => (27, 2),
+    "dispose" => (28, 2),
+  };
+
+Num: u16 = {
+    r"[0-9]+" => u16::from_str(<>).unwrap(),
+    r"0x[0-9A-Fa-f]+" => u16::from_str_radix(&<>[2..], 16).unwrap(),
+  };
+
+Reg: u8 = {
+    "cb" => 0,
+    "ct" => 1,
+    "pb" => 2,
+    "pt" => 3,
+    "sb" => 4,
+    "st" => 5,
+    "hb" => 6,
+    "ht" => 7,
+    "lb" => 8,
+    "l1" => 9,
+    "l2" => 10,
+    "l3" => 11,
+    "l4" => 12,
+    "l5" => 13,
+    "l6" => 14,
+    "cp" => 15,
+  };

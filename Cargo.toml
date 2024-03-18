@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["tam", "tasc"]
+
+[workspace.package]
+authors = ["Ian Knight <ian.knight.1990@gmail.com>"]
+homepage = "https://github.com/nottsknight/triangle-abstract-machine"
+repository = "https://github.com/nottsknight/triangle-abstract-machine"
+license = "MIT"
+
+[workspace.dependencies]
+byteorder = "1.5.0"
+clap = {version = "4.5.3", features = ["derive"]}
+
+[profile.release]
+strip = true
