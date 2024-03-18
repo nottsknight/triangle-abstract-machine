@@ -1,6 +1,12 @@
 use std::fmt::{Display, Formatter, Result};
+
 #[derive(Debug, Copy, Clone)]
-pub struct Instruction(pub u8, pub u8, pub u8, pub i16);
+pub struct Instruction {
+    pub op: u8,
+    pub r: u8,
+    pub n: u8,
+    pub d: i16,
+}
 
 impl From<u32> for Instruction {
     fn from(value: u32) -> Self {
@@ -8,7 +14,12 @@ impl From<u32> for Instruction {
         let r = (value & 0x0f000000) >> 24;
         let n = (value & 0x00ff0000) >> 16;
         let d = value & 0x0000ffff;
-        Instruction(op as u8, r as u8, n as u8, d as i16)
+        Instruction {
+            op: op as u8,
+            r: r as u8,
+            n: n as u8,
+            d: d as i16,
+        }
     }
 }
 
@@ -37,7 +48,7 @@ fn get_reg_name(r: u8) -> String {
 
 impl Display for Instruction {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        let Instruction(op, r, n, d) = self;
+        let Instruction { op, r, n, d } = self;
         let reg_name = get_reg_name(*r);
         match op {
             0 => write!(f, "load    {n}, [{reg_name}{d:+}]"),

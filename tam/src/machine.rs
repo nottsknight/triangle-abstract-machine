@@ -55,7 +55,7 @@ impl TAM {
     pub fn run(&mut self) -> TAMResult<()> {
         self.registers[CP] = 0;
         loop {
-            let instr @ Instruction(op, _, _, _) = self.fetch_decode();
+            let instr = self.fetch_decode();
             if self.trace {
                 println!("{:08x}: {:?}", self.registers[CP] - 1, instr);
                 println!("{:?}", self.data[..self.registers[ST]].to_vec());
@@ -65,7 +65,7 @@ impl TAM {
                 );
             }
 
-            if op == 15 {
+            if instr.op == 15 {
                 return Ok(());
             }
             self.execute(instr)?;
@@ -80,8 +80,8 @@ impl TAM {
     }
 
     #[inline]
-    fn execute(&mut self, instr @ Instruction(op, _, _, _): Instruction) -> TAMResult<()> {
-        match op {
+    fn execute(&mut self, instr: Instruction) -> TAMResult<()> {
+        match instr.op {
             0 => self.exec_load(instr),
             1 => self.exec_loada(instr),
             2 => self.exec_loadi(instr),
@@ -130,9 +130,9 @@ impl TAM {
         }
     }
 
-    fn exec_load(&mut self, Instruction(_, r, n, d): Instruction) -> TAMResult<()> {
-        let mut addr = self.registers[r as usize].wrapping_add_signed(d as isize);
-        for _ in 0..n {
+    fn exec_load(&mut self, instr: Instruction) -> TAMResult<()> {
+        let mut addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
+        for _ in 0..instr.n {
             self.check_addr(addr)?;
             let dat = self.data[addr];
             self.push_data(dat);
@@ -142,16 +142,16 @@ impl TAM {
     }
 
     #[inline]
-    fn exec_loada(&mut self, Instruction(_, r, _, d): Instruction) -> TAMResult<()> {
-        let addr = self.registers[r as usize].wrapping_add_signed(d as isize);
+    fn exec_loada(&mut self, instr: Instruction) -> TAMResult<()> {
+        let addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
         self.check_addr(addr)?;
         self.push_data(addr as i16);
         self.check_stack()
     }
 
-    fn exec_loadi(&mut self, Instruction(_, _, n, _): Instruction) -> TAMResult<()> {
+    fn exec_loadi(&mut self, instr: Instruction) -> TAMResult<()> {
         let mut addr = self.pop_data() as usize;
-        for _ in 0..n {
+        for _ in 0..instr.n {
             self.check_addr(addr)?;
             let dat = self.data[addr];
             self.push_data(dat);
@@ -161,14 +161,14 @@ impl TAM {
     }
 
     #[inline]
-    fn exec_loadl(&mut self, Instruction(_, _, _, d): Instruction) -> TAMResult<()> {
-        self.push_data(d);
+    fn exec_loadl(&mut self, instr: Instruction) -> TAMResult<()> {
+        self.push_data(instr.d);
         self.check_stack()
     }
 
-    fn exec_store(&mut self, Instruction(_, r, n, d): Instruction) -> TAMResult<()> {
-        let mut addr = self.registers[r as usize].wrapping_add_signed(d as isize);
-        for _ in 0..n {
+    fn exec_store(&mut self, instr: Instruction) -> TAMResult<()> {
+        let mut addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
+        for _ in 0..instr.n {
             self.check_addr(addr)?;
             let dat = self.pop_data();
             self.data[addr] = dat;
@@ -177,9 +177,9 @@ impl TAM {
         self.check_stack()
     }
 
-    fn exec_storei(&mut self, Instruction(_, _, n, _): Instruction) -> TAMResult<()> {
+    fn exec_storei(&mut self, instr: Instruction) -> TAMResult<()> {
         let mut addr = self.pop_data() as usize;
-        for _ in 0..n {
+        for _ in 0..instr.n {
             self.check_addr(addr)?;
             let dat = self.pop_data();
             self.data[addr] = dat;
@@ -188,9 +188,9 @@ impl TAM {
         self.check_stack()
     }
 
-    fn exec_call(&mut self, Instruction(_, r, n, d): Instruction) -> TAMResult<()> {
-        if (r as usize) == PB {
-            match d {
+    fn exec_call(&mut self, instr: Instruction) -> TAMResult<()> {
+        if (instr.r as usize) == PB {
+            match instr.d {
                 1 => self.call_id(),
                 2 => self.call_not(),
                 3 => self.call_and(),
@@ -218,12 +218,12 @@ impl TAM {
             }
             Ok(())
         } else {
-            let addr = self.registers[r as usize].wrapping_add_signed(d as isize);
+            let addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
             if addr >= self.registers[CT] {
                 return Err(TAMError::SegmentationFault(self.registers[CP] - 1, addr));
             }
 
-            let static_link = self.registers[n as usize];
+            let static_link = self.registers[instr.n as usize];
             let dynamic_link = self.registers[LB];
             let ret_addr = self.registers[CP];
 
@@ -245,11 +245,11 @@ impl TAM {
     }
 
     #[inline]
-    fn exec_calli(&mut self, Instruction(_op, _r, _n, _d): Instruction) -> TAMResult<()> {
+    fn exec_calli(&mut self, _instr: Instruction) -> TAMResult<()> {
         todo!("calli not implemented yet");
     }
 
-    fn exec_return(&mut self, Instruction(_, _, n, d): Instruction) -> TAMResult<()> {
+    fn exec_return(&mut self, instr: Instruction) -> TAMResult<()> {
         let ret_addr = self.data[self.registers[LB] + 2] as usize;
         if ret_addr >= self.registers[CT] {
             return Err(TAMError::SegmentationFault(
@@ -259,7 +259,7 @@ impl TAM {
         }
 
         let mut ret_val = Vec::new();
-        for _ in 0..n {
+        for _ in 0..instr.n {
             ret_val.push(self.pop_data());
         }
 
@@ -267,7 +267,7 @@ impl TAM {
             self.pop_data();
         }
 
-        for _ in 0..d {
+        for _ in 0..instr.d {
             self.pop_data();
         }
 
@@ -281,19 +281,19 @@ impl TAM {
     }
 
     #[inline]
-    fn exec_push(&mut self, Instruction(_, _, _, d): Instruction) -> TAMResult<()> {
-        self.registers[ST] += d as usize;
+    fn exec_push(&mut self, instr: Instruction) -> TAMResult<()> {
+        self.registers[ST] += instr.d as usize;
         self.check_stack()
     }
 
     #[inline]
-    fn exec_pop(&mut self, Instruction(_op, _r, _n, _d): Instruction) -> TAMResult<()> {
+    fn exec_pop(&mut self, _instr: Instruction) -> TAMResult<()> {
         todo!("pop not yet implemented");
     }
 
     #[inline]
-    fn exec_jump(&mut self, Instruction(_, r, _, d): Instruction) -> TAMResult<()> {
-        let addr = self.registers[r as usize].wrapping_add_signed(d as isize);
+    fn exec_jump(&mut self, instr: Instruction) -> TAMResult<()> {
+        let addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
         if addr >= self.registers[CT] {
             return Err(TAMError::SegmentationFault(self.registers[CP] - 1, addr));
         }
@@ -314,10 +314,10 @@ impl TAM {
     }
 
     #[inline]
-    fn exec_jumpif(&mut self, Instruction(_, r, n, d): Instruction) -> TAMResult<()> {
+    fn exec_jumpif(&mut self, instr: Instruction) -> TAMResult<()> {
         let val = self.pop_data();
-        if val == n as i16 {
-            let addr = self.registers[r as usize].wrapping_add_signed(d as isize);
+        if val == instr.n as i16 {
+            let addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
             if addr >= self.registers[CT] {
                 return Err(TAMError::SegmentationFault(self.registers[CP] - 1, addr));
             }
