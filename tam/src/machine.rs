@@ -130,8 +130,13 @@ impl TAM {
         }
     }
 
+    #[inline]
+    fn get_addr(&self, instr: Instruction) -> usize {
+        self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize)
+    }
+
     fn exec_load(&mut self, instr: Instruction) -> TAMResult<()> {
-        let mut addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
+        let mut addr = self.get_addr(instr);
         for _ in 0..instr.n {
             self.check_addr(addr)?;
             let dat = self.data[addr];
@@ -143,7 +148,7 @@ impl TAM {
 
     #[inline]
     fn exec_loada(&mut self, instr: Instruction) -> TAMResult<()> {
-        let addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
+        let addr = self.get_addr(instr);
         self.check_addr(addr)?;
         self.push_data(addr as i16);
         self.check_stack()
@@ -167,7 +172,7 @@ impl TAM {
     }
 
     fn exec_store(&mut self, instr: Instruction) -> TAMResult<()> {
-        let mut addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
+        let mut addr = self.get_addr(instr);
         for _ in 0..instr.n {
             self.check_addr(addr)?;
             let dat = self.pop_data();
@@ -218,7 +223,7 @@ impl TAM {
             }
             Ok(())
         } else {
-            let addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
+            let addr = self.get_addr(instr);
             if addr >= self.registers[CT] {
                 return Err(TAMError::SegmentationFault(self.registers[CP] - 1, addr));
             }
@@ -293,7 +298,7 @@ impl TAM {
 
     #[inline]
     fn exec_jump(&mut self, instr: Instruction) -> TAMResult<()> {
-        let addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
+        let addr = self.get_addr(instr);
         if addr >= self.registers[CT] {
             return Err(TAMError::SegmentationFault(self.registers[CP] - 1, addr));
         }
