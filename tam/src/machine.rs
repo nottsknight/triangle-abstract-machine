@@ -7,7 +7,6 @@ use byteorder::{ReadBytesExt, BE};
 
 const MEM_SIZE: usize = 65535;
 
-const CB: usize = 0;
 const CT: usize = 1;
 const PB: usize = 2;
 const PT: usize = 3;
@@ -16,12 +15,6 @@ const ST: usize = 5;
 const HB: usize = 6;
 const HT: usize = 7;
 const LB: usize = 8;
-const L1: usize = 9;
-const L2: usize = 10;
-const L3: usize = 11;
-const L4: usize = 12;
-const L5: usize = 13;
-const L6: usize = 14;
 const CP: usize = 15;
 
 pub struct TAM {
