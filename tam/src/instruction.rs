@@ -1,10 +1,15 @@
 use std::fmt::{Display, Formatter, Result};
 
+/// A single TAM instruction.
 #[derive(Debug, Copy, Clone)]
 pub struct Instruction {
+    /// Opcode
     pub op: u8,
+    /// Register index
     pub r: u8,
+    /// Unsigned 8-bit operand
     pub n: u8,
+    /// Signed 16-bit operand
     pub d: i16,
 }
 
@@ -56,7 +61,7 @@ impl Display for Instruction {
             2 => write!(f, "loadi   {n}"),
             3 => write!(f, "loadl   {d}"),
             4 => write!(f, "store   {n}, [{reg_name}{d:+}]"),
-            5 => write!(f, "storei"),
+            5 => write!(f, "storei  {n}"),
             6 => write!(f, "call    [{reg_name}{d:+}]"),
             7 => write!(f, "calli"),
             8 => write!(f, "return  {n}, {d}"),

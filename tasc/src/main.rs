@@ -1,7 +1,8 @@
+use std::{fs, fs::OpenOptions};
+
 use byteorder::{WriteBytesExt, BE};
 use clap::Parser;
 use lalrpop_util::lalrpop_mod;
-use std::{fs, fs::OpenOptions};
 
 lalrpop_mod!(pub tasm);
 
@@ -30,8 +31,10 @@ fn main() -> std::io::Result<()> {
         .open(&args.outfile)?;
 
     for (op, r, n, d) in instrs {
-        let data =
-            ((op as u32) << 28) | ((r as u32) << 24) | ((n as u32) << 16) | ((d as u32) & 0xffff);
+        let data = ((op as u32) << 28)
+            | ((r as u32) << 24)
+            | ((n as u32) << 16)
+            | ((d as u32) & 0xffff);
         f.write_u32::<BE>(data)?;
     }
 

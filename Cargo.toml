@@ -14,3 +14,5 @@ clap = {version = "4.5.3", features = ["derive"]}
 
 [profile.release]
 strip = true
+opt-level = 2
+lto = true

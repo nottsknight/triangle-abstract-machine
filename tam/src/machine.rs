@@ -1,9 +1,10 @@
 use std::io::{Cursor, Read};
 use std::str::FromStr;
 
+use byteorder::{ReadBytesExt, BE};
+
 use crate::errors::{TAMError, TAMResult};
 use crate::instruction::Instruction;
-use byteorder::{ReadBytesExt, BE};
 
 const MEM_SIZE: usize = 65535;
 
@@ -17,6 +18,7 @@ const HT: usize = 7;
 const LB: usize = 8;
 const CP: usize = 15;
 
+/// TAM emulator
 pub struct TAM {
     code: [u32; MEM_SIZE],
     data: [i16; MEM_SIZE],
@@ -25,6 +27,10 @@ pub struct TAM {
 }
 
 impl TAM {
+    /// Construct a new TAM emulator.
+    ///
+    /// # Arguments
+    /// - `trace`: specify if a trace should be printed during execution
     pub fn new(trace: bool) -> TAM {
         let mut tam = TAM {
             code: [0; MEM_SIZE],
@@ -40,10 +46,14 @@ impl TAM {
         tam
     }
 
+    /// Load a program from a file.
+    ///
+    /// This method clears the code store before loading.
     pub fn load_program(&mut self, filename: &str) -> std::io::Result<()> {
         let bytes = std::fs::read(filename)?;
         let mut bytes = Cursor::new(bytes);
 
+        self.code.fill(0);
         self.registers[CT] = 0;
         while let Ok(instr) = bytes.read_u32::<BE>() {
             self.code[self.registers[CT]] = instr;
@@ -52,7 +62,11 @@ impl TAM {
         Ok(())
     }
 
+    /// Run the loaded program.
+    ///
+    /// This method clears the data store before running.
     pub fn run(&mut self) -> TAMResult<()> {
+        self.data.fill(0);
         self.registers[CP] = 0;
         loop {
             let instr = self.fetch_decode();
@@ -72,14 +86,12 @@ impl TAM {
         }
     }
 
-    #[inline]
     fn fetch_decode(&mut self) -> Instruction {
         let instr = self.code[self.registers[CP]];
         self.registers[CP] += 1;
         Instruction::from(instr)
     }
 
-    #[inline]
     fn execute(&mut self, instr: Instruction) -> TAMResult<()> {
         match instr.op {
             0 => self.exec_load(instr),
@@ -100,19 +112,16 @@ impl TAM {
         }
     }
 
-    #[inline]
     fn push_data(&mut self, dat: i16) {
         self.data[self.registers[ST]] = dat;
         self.registers[ST] += 1;
     }
 
-    #[inline]
     fn pop_data(&mut self) -> i16 {
         self.registers[ST] -= 1;
         self.data[self.registers[ST]]
     }
 
-    #[inline]
     fn check_addr(&self, addr: usize) -> TAMResult<()> {
         if addr < self.registers[ST] || addr > self.registers[HT] {
             Ok(())
@@ -121,7 +130,6 @@ impl TAM {
         }
     }
 
-    #[inline]
     fn check_stack(&self) -> TAMResult<()> {
         if self.registers[ST] < self.registers[HT] {
             Ok(())
@@ -130,7 +138,6 @@ impl TAM {
         }
     }
 
-    #[inline]
     fn get_addr(&self, instr: Instruction) -> usize {
         self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize)
     }
@@ -146,7 +153,6 @@ impl TAM {
         self.check_stack()
     }
 
-    #[inline]
     fn exec_loada(&mut self, instr: Instruction) -> TAMResult<()> {
         let addr = self.get_addr(instr);
         self.check_addr(addr)?;
@@ -165,7 +171,6 @@ impl TAM {
         self.check_stack()
     }
 
-    #[inline]
     fn exec_loadl(&mut self, instr: Instruction) -> TAMResult<()> {
         self.push_data(instr.d);
         self.check_stack()
@@ -249,7 +254,6 @@ impl TAM {
         }
     }
 
-    #[inline]
     fn exec_calli(&mut self, _instr: Instruction) -> TAMResult<()> {
         todo!("calli not implemented yet");
     }
@@ -285,18 +289,15 @@ impl TAM {
         Ok(())
     }
 
-    #[inline]
     fn exec_push(&mut self, instr: Instruction) -> TAMResult<()> {
         self.registers[ST] += instr.d as usize;
         self.check_stack()
     }
 
-    #[inline]
     fn exec_pop(&mut self, _instr: Instruction) -> TAMResult<()> {
         todo!("pop not yet implemented");
     }
 
-    #[inline]
     fn exec_jump(&mut self, instr: Instruction) -> TAMResult<()> {
         let addr = self.get_addr(instr);
         if addr >= self.registers[CT] {
@@ -307,7 +308,6 @@ impl TAM {
         Ok(())
     }
 
-    #[inline]
     fn exec_jumpi(&mut self, _: Instruction) -> TAMResult<()> {
         let addr = self.pop_data() as usize;
         if addr >= self.registers[CT] {
@@ -318,11 +318,10 @@ impl TAM {
         }
     }
 
-    #[inline]
     fn exec_jumpif(&mut self, instr: Instruction) -> TAMResult<()> {
         let val = self.pop_data();
         if val == instr.n as i16 {
-            let addr = self.registers[instr.r as usize].wrapping_add_signed(instr.d as isize);
+            let addr = self.get_addr(instr);
             if addr >= self.registers[CT] {
                 return Err(TAMError::SegmentationFault(self.registers[CP] - 1, addr));
             }
@@ -331,65 +330,55 @@ impl TAM {
         Ok(())
     }
 
-    #[inline]
     fn call_id(&mut self) {
         let val = self.pop_data();
         self.push_data(val);
     }
 
-    #[inline]
     fn call_not(&mut self) {
         let val = self.pop_data();
         self.push_data(if val == 0 { 1 } else { 0 });
     }
 
-    #[inline]
     fn call_and(&mut self) {
         let t2 = self.pop_data();
         let t1 = self.pop_data();
         self.push_data(if t1 * t2 == 0 { 0 } else { 1 });
     }
 
-    #[inline]
     fn call_or(&mut self) {
         let t2 = self.pop_data();
         let t1 = self.pop_data();
         self.push_data(if t1 + t2 == 0 { 0 } else { 1 });
     }
 
-    #[inline]
     fn call_inc(&mut self) {
         let val = self.pop_data();
         self.push_data(val + 1);
     }
 
-    #[inline]
     fn call_dec(&mut self) {
         let val = self.pop_data();
         self.push_data(val - 1);
     }
 
-    #[inline]
     fn call_neg(&mut self) {
         let val = self.pop_data() as i16;
         self.push_data(-val);
     }
 
-    #[inline]
     fn call_add(&mut self) {
         let t2 = self.pop_data();
         let t1 = self.pop_data();
         self.push_data(t1.overflowing_add(t2).0);
     }
 
-    #[inline]
     fn call_sub(&mut self) {
         let t2 = self.pop_data();
         let t1 = self.pop_data();
         self.push_data(t1.overflowing_sub(t2).0);
     }
 
-    #[inline]
     fn call_mul(&mut self) {
         let t2 = self.pop_data();
         let t1 = self.pop_data();
@@ -418,28 +407,24 @@ impl TAM {
         Ok(())
     }
 
-    #[inline]
     fn call_lt(&mut self) {
         let t2 = self.pop_data();
         let t1 = self.pop_data();
         self.push_data(if t1 < t2 { 1 } else { 0 });
     }
 
-    #[inline]
     fn call_le(&mut self) {
         let t2 = self.pop_data();
         let t1 = self.pop_data();
         self.push_data(if t1 <= t2 { 1 } else { 0 });
     }
 
-    #[inline]
     fn call_ge(&mut self) {
         let t2 = self.pop_data();
         let t1 = self.pop_data();
         self.push_data(if t1 >= t2 { 1 } else { 0 });
     }
 
-    #[inline]
     fn call_gt(&mut self) {
         let t2 = self.pop_data();
         let t1 = self.pop_data();
@@ -454,13 +439,11 @@ impl TAM {
         self.data[addr] = input;
     }
 
-    #[inline]
     fn call_putint(&mut self) {
         let val = self.pop_data();
         print!("{}", val);
     }
 
-    #[inline]
     fn call_puteol(&self) {
         print!("\n");
     }
@@ -474,19 +457,16 @@ impl TAM {
         Ok(())
     }
 
-    #[inline]
     fn call_put(&mut self) {
         let c = self.pop_data() as u8;
         print!("{}", c as char);
     }
 
-    #[inline]
     fn call_geteol(&self) {
         let mut buf = String::new();
         std::io::stdin().read_line(&mut buf).unwrap();
     }
 
-    #[inline]
     fn call_new(&mut self) {
         let n = self.pop_data() as usize;
         self.registers[HT] -= n;

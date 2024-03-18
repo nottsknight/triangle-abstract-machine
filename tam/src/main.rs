@@ -2,11 +2,13 @@ mod errors;
 mod instruction;
 mod machine;
 
+use std::fs::File;
+
 use byteorder::{ReadBytesExt, BE};
 use clap::Parser;
 use instruction::Instruction;
-use machine::TAM;
-use std::fs::File;
+
+use crate::machine::TAM;
 
 #[derive(Parser, Debug)]
 struct Args {
