@@ -14,3 +14,6 @@ readme = "README.md"
 arbitrary-int = "1.2.7"
 byteorder.workspace = true
 clap.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true

@@ -1,7 +1,10 @@
-use std::fmt::{Display, Formatter, Result};
+use std::{
+    fmt::{Display, Formatter, Result},
+    u32,
+};
 
 /// A single TAM instruction.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Instruction {
     /// Opcode
     pub op: u8,
@@ -25,6 +28,15 @@ impl From<u32> for Instruction {
             n: n as u8,
             d: d as i16,
         }
+    }
+}
+
+impl From<Instruction> for u32 {
+    fn from(value: Instruction) -> Self {
+        ((value.op as u32) << 28)
+            | ((value.r as u32) << 24)
+            | ((value.n as u32) << 16)
+            | (value.d as u32) & 0xffff
     }
 }
 

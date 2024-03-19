@@ -473,3 +473,179 @@ impl TAM {
         self.push_data((self.registers[HT] + 1) as i16);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rstest::*;
+
+    use super::*;
+
+    #[fixture]
+    fn tam() -> TAM {
+        TAM::new(false)
+    }
+
+    #[rstest]
+    fn fetch_decode(mut tam: TAM) {
+        let inst = Instruction {
+            op: 15,
+            r: 0,
+            n: 0,
+            d: 0,
+        };
+        tam.code[0] = u32::from(inst);
+
+        let res = tam.fetch_decode();
+
+        assert_eq!(1, tam.registers[CP]);
+        assert_eq!(inst, res);
+    }
+
+    #[rstest]
+    #[case::load(0)]
+    #[case::loada(1)]
+    #[case::loadi(2)]
+    #[case::loadl(3)]
+    #[case::push(10)]
+    fn exec_err_overflow(mut tam: TAM, #[case] op: u8) {
+        tam.registers[CT] = 200;
+        tam.registers[CP] = 1;
+        tam.registers[ST] = 101;
+        tam.registers[HT] = 101;
+
+        let inst = Instruction {
+            op,
+            r: 4,
+            n: 3,
+            d: 0,
+        };
+        let res = tam.execute(inst);
+
+        match res {
+            Ok(_) => panic!("should not have succeeded"),
+            Err(e) => match e {
+                TAMError::StackOverflow(_) => assert!(true),
+                TAMError::SegmentationFault(_, _) => {
+                    panic!("expected stack overflow, got segfault")
+                }
+                TAMError::DivideByZero(_) => {
+                    panic!("expected stack overflow, got divide by 0")
+                }
+            },
+        }
+    }
+
+    #[rstest]
+    fn load_ok(mut tam: TAM) {
+        tam.data[0] = 42;
+        tam.registers[ST] = 1;
+
+        let inst = Instruction {
+            op: 0,
+            r: 4,
+            n: 1,
+            d: 0,
+        };
+        let res = tam.execute(inst);
+
+        assert!(res.is_ok());
+        assert_eq!(2, tam.registers[ST]);
+        assert_eq!(42, tam.data[1]);
+    }
+
+    #[rstest]
+    fn load_err_segfault(mut tam: TAM) {
+        tam.registers[CP] = 1;
+
+        let inst = Instruction {
+            op: 0,
+            r: 4,
+            n: 1,
+            d: 5,
+        };
+        let res = tam.execute(inst);
+
+        match res {
+            Ok(_) => panic!("should not have succeeded"),
+            Err(e) => {
+                if let TAMError::SegmentationFault(_, _) = e {
+                    assert!(true);
+                } else {
+                    panic!("expected a segmentation fault");
+                }
+            }
+        }
+    }
+
+    #[rstest]
+    fn loada_ok(mut tam: TAM) {
+        tam.registers[ST] = 2;
+
+        let inst = Instruction {
+            op: 1,
+            r: 4,
+            n: 0,
+            d: 1,
+        };
+        let result = tam.execute(inst);
+
+        assert!(result.is_ok());
+        assert_eq!(1, tam.data[2]);
+        assert_eq!(3, tam.registers[ST]);
+    }
+
+    #[rstest]
+    fn loada_err_segfault(mut tam: TAM) {
+        tam.registers[CP] = 1;
+
+        let inst = Instruction {
+            op: 1,
+            r: 4,
+            n: 0,
+            d: 1,
+        };
+        let result = tam.execute(inst);
+
+        match result {
+            Ok(_) => panic!("should not have succeeded"),
+            Err(e) => {
+                if let TAMError::SegmentationFault(_, _) = e {
+                    assert!(true);
+                } else {
+                    panic!("expected a segfault");
+                }
+            }
+        }
+    }
+
+    #[rstest]
+    fn loadl_ok(mut tam: TAM) {
+        let inst = Instruction {
+            op: 3,
+            r: 0,
+            n: 0,
+            d: -5,
+        };
+
+        let res = tam.execute(inst);
+
+        assert!(res.is_ok());
+        assert_eq!(-5, tam.data[0]);
+        assert_eq!(1, tam.registers[ST]);
+    }
+
+    #[rstest]
+    fn push(mut tam: TAM) {
+        let inst = Instruction {
+            op: 10,
+            r: 0,
+            n: 0,
+            d: 2,
+        };
+
+        let res = tam.execute(inst);
+
+        assert!(res.is_ok());
+        assert_eq!(2, tam.registers[ST]);
+    }
+}
