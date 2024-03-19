@@ -7,8 +7,8 @@ grammar;
 pub Program = LblInstruction+;
 
 LblInstruction: InstrData = {
-    <lbl:Label> ":" <mut instr:Instruction> => {instr.label = Some(lbl); instr},
-    Instruction
+    Comment? <lbl:Label> ":" <mut instr:Instruction> => {instr.label = Some(lbl); instr},
+    Comment? <Instruction>
   }
 
 Instruction = {
@@ -135,3 +135,5 @@ Reg: u8 = {
     "l6" => 14,
     "cp" => 15,
   };
+
+Comment: () = r"#[^#]*#" => ();

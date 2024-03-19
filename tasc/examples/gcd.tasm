@@ -1,9 +1,13 @@
           jump    [cb+6]
+
+# (a, b) -> (b, a%b) #
 a_mod_b:  load    1, [lb-1]
           load    1, [lb-2]
           load    1, [lb-1]
           call    mod
           return  2, 2
+
+
 main:     push    2
           loada   [lb+0]
           call    getint

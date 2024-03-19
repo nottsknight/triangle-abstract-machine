@@ -1,9 +1,12 @@
+# get argument and setup #
         push      2
         loada     [sb+0]
         call      getint
         load      1, [sb+0]
         call      dec
         store     1, [sb+1]
+
+# start of iteration #
 loop:   load      1, [sb+1]
         jumpif    0, end
         load      1, [sb+0]
@@ -14,6 +17,8 @@ loop:   load      1, [sb+1]
         call      dec
         store     1, [sb+1]
         jump      loop
+
+# load the final result and print it #
 end:    load      1, [sb+0]
         call      putint
         call      puteol
