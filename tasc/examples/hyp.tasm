@@ -1,8 +1,11 @@
-        jump    [cb+5]
+        jump    main
+
+# x -> x*x #
 square: load    1, [lb-1]
         load    1, [lb-1]
         call    mul
         return  1, 1
+
 main:   push    2
         loada   [sb+0]
         call    getint
