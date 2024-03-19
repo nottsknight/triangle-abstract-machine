@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["tam", "tasc"]
+members = [ "common","tam", "tasc"]
 
 [workspace.package]
 authors = ["Ian Knight <ian.knight.1990@gmail.com>"]

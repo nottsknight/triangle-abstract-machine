@@ -2,9 +2,9 @@ use std::io::{Cursor, Read};
 use std::str::FromStr;
 
 use byteorder::{ReadBytesExt, BE};
+use common::instruction::Instruction;
 
 use crate::errors::{TAMError, TAMResult};
-use crate::instruction::Instruction;
 
 const MEM_SIZE: usize = 65535;
 

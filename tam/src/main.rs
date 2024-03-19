@@ -1,12 +1,11 @@
 mod errors;
-mod instruction;
 mod machine;
 
 use std::fs::File;
 
 use byteorder::{ReadBytesExt, BE};
 use clap::Parser;
-use instruction::Instruction;
+use common::instruction::Instruction;
 
 use crate::machine::TAM;
 
