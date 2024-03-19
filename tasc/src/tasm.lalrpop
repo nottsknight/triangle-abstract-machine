@@ -1,11 +1,17 @@
-use crate::InstrData;
 use std::str::FromStr;
+
+use crate::InstrData;
 
 grammar;
 
-pub Program = Instruction+;
+pub Program = LblInstruction+;
 
-pub Instruction = {
+LblInstruction: InstrData = {
+    <lbl:Label> ":" <mut instr:Instruction> => {instr.label = Some(lbl); instr},
+    Instruction
+  }
+
+Instruction = {
   Load, LoadA, LoadI, LoadL,
   Store, StoreI,
   Call, CallI, Return,
@@ -14,40 +20,57 @@ pub Instruction = {
   Halt
   };
 
-Load: InstrData = "load" <n:Num> "," <dr:Addr> => (0, dr.1, n as u8, dr.0);
+Load: InstrData = "load" <n:Num> "," <dr:Addr> => InstrData::new(0, dr.1, n as u8, dr.0);
 
-LoadA: InstrData = "loada" <Addr> => (1, <>.1, 0, <>.0);
+LoadA: InstrData = "loada" <Addr> => InstrData::new(1, <>.1, 0, <>.0);
 
-LoadI: InstrData = "loadi" <Num> => (2, 0, <> as u8, 0);
+LoadI: InstrData = "loadi" <Num> => InstrData::new(2, 0, <> as u8, 0);
 
-LoadL: InstrData = "loadl" <Num> => (3, 0, 0, <> as i16);
+LoadL: InstrData = "loadl" <Num> => InstrData::new(3, 0, 0, <> as i16);
 
-Store: InstrData = "store" <n:Num> "," <dr:Addr> => (4, dr.1, n as u8, dr.0);
+Store: InstrData = "store" <n:Num> "," <dr:Addr> => InstrData::new(4, dr.1, n as u8, dr.0);
 
-StoreI: InstrData = "storei" <Num> => (5, 0, <> as u8, 0);
+StoreI: InstrData = "storei" <Num> => InstrData::new(5, 0, <> as u8, 0);
 
 Call: InstrData = {
-    "call" <Builtin> => (6, <>.1, 0, <>.0),
-    "call" <n:Reg> "," <dr:Addr> => (6, dr.1, n as u8, dr.0),
+    "call" <Builtin> => InstrData::new(6, <>.1, 0, <>.0),
+    "call" <n:Reg> "," <lbl:Label> => {
+        let mut dat = InstrData::new(6, 0, n as u8, 0);
+        dat.named_dest = Some(lbl);
+        dat
+      },
+    "call" <n:Reg> "," <dr:Addr> => InstrData::new(6, dr.1, n as u8, dr.0),
   };
 
-CallI: InstrData = "calli" => (7, 0, 0, 0);
+CallI: InstrData = "calli" => InstrData::new(7, 0, 0, 0);
 
-Return: InstrData = "return" <n:Num> "," <d:Num> => (8, 0, n as u8, d as i16);
+Return: InstrData = "return" <n:Num> "," <d:Num> => InstrData::new(8, 0, n as u8, d as i16);
 
-Push: InstrData = "push" <Num> => (10, 0, 0, <> as i16);
+Push: InstrData = "push" <Num> => InstrData::new(10, 0, 0, <> as i16);
 
-Pop: InstrData = "pop" <n:Num> "," <d:Num> => (11, 0, n as u8, d as i16);
+Pop: InstrData = "pop" <n:Num> "," <d:Num> => InstrData::new(11, 0, n as u8, d as i16);
 
-Jump: InstrData = "jump" <Addr> => (12, <>.1, 0, <>.0);
+Jump: InstrData = {
+    "jump" <Addr> => InstrData::new(12, <>.1, 0, <>.0),
+    "jump" <Label> => {
+        let mut data = InstrData::new(12, 0, 0, 0);
+        data.named_dest = Some(<>);
+        data
+    }
+  };
 
-JumpI: InstrData = "jumpi" => (13, 0, 0, 0);
+JumpI: InstrData = "jumpi" => InstrData::new(13, 0, 0, 0);
 
-JumpIf: InstrData = "jumpif" <n:Num> "," <dr:Addr> => (14, dr.1, n as u8, dr.0);
+JumpIf: InstrData = {
+    "jumpif" <n:Num> "," <dr:Addr> => InstrData::new(14, dr.1, n as u8, dr.0),
+    "jumpif" <n:Num> "," <lbl:Label> => {
+        let mut data = InstrData::new(14, 0, n as u8, 0);
+        data.named_dest = Some(lbl);
+        data
+      }
+  };
 
-Halt: InstrData = "halt" => (15, 0, 0, 0);
-
-CallArg = {Addr, Builtin};
+Halt: InstrData = "halt" => InstrData::new(15, 0, 0, 0);
 
 Addr: (i16, u8) = "[" <r:Reg> <d:Offset> "]" => (d as i16, r);
 
@@ -86,6 +109,8 @@ Builtin: (i16, u8) = {
     "new" => (27, 2),
     "dispose" => (28, 2),
   };
+
+Label: String = r"[a-z][a-z0-9_]*" => String::from(<>);
 
 Num: u16 = {
     r"[0-9]+" => u16::from_str(<>).unwrap(),

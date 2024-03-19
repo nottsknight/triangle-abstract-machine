@@ -11,6 +11,7 @@ readme = "README.md"
 [dependencies]
 byteorder.workspace = true
 clap.workspace = true
+common = {path = "../common"}
 lalrpop-util = {version = "0.20.2", features = ["lexer", "unicode"]}
 
 [build-dependencies]

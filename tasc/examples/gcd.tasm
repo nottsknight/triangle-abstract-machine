@@ -1,23 +1,23 @@
-jump    [cb+6]
-load    1, [lb-1]
-load    1, [lb-2]
-load    1, [lb-1]
-call    mod
-return  2, 2
-push    2
-loada   [lb+0]
-call    getint
-loada   [lb+1]
-call    getint
-load    1, [lb+0]
-load    1, [lb+1]
-call    lb, [cb+1]
-store   1, [lb+1]
-store   1, [lb+0]
-load    1, [lb+1]
-jumpif  0, [cb+19]
-jump    [cb+11]
-load    1, [lb+0]
-call    putint
-call    puteol
-halt
+          jump    [cb+6]
+a_mod_b:  load    1, [lb-1]
+          load    1, [lb-2]
+          load    1, [lb-1]
+          call    mod
+          return  2, 2
+main:     push    2
+          loada   [lb+0]
+          call    getint
+          loada   [lb+1]
+          call    getint
+iter:     load    1, [lb+0]
+          load    1, [lb+1]
+          call    lb, a_mod_b
+          store   1, [lb+1]
+          store   1, [lb+0]
+          load    1, [lb+1]
+          jumpif  0, end
+          jump    iter
+end:      load    1, [lb+0]
+          call    putint
+          call    puteol
+          halt

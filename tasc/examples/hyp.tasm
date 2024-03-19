@@ -1,30 +1,30 @@
-jump    [cb+5]
-load    1, [lb-1]
-load    1, [lb-1]
-call    mul
-return  1, 1
-push    2
-loada   [sb+0]
-call    getint
-loada   [sb+1]
-call    getint
-load    1, [sb+0]
-call    lb, [cb+1]
-load    1, [sb+1]
-call    lb, [cb+1]
-call    add
-loadl   0x73
-call    put
-loadl   0x71
-call    put
-loadl   0x72
-call    put
-loadl   0x74
-call    put
-loadl   0x28
-call    put
-call    putint
-loadl   0x29 
-call    put
-call    puteol
-halt
+        jump    [cb+5]
+square: load    1, [lb-1]
+        load    1, [lb-1]
+        call    mul
+        return  1, 1
+main:   push    2
+        loada   [sb+0]
+        call    getint
+        loada   [sb+1]
+        call    getint
+        load    1, [sb+0]
+        call    lb, square
+        load    1, [sb+1]
+        call    lb, square
+        call    add
+        loadl   0x73
+        call    put
+        loadl   0x71
+        call    put
+        loadl   0x72
+        call    put
+        loadl   0x74
+        call    put
+        loadl   0x28
+        call    put
+        call    putint
+        loadl   0x29 
+        call    put
+        call    puteol
+        halt
