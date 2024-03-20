@@ -71,7 +71,7 @@ impl TAM {
         loop {
             let instr = self.fetch_decode();
             if self.trace {
-                println!("{:08x}: {:?}", self.registers[CP] - 1, instr);
+                println!("{:04x}: {:?}", self.registers[CP] - 1, instr);
                 println!("{:?}", self.data[..self.registers[ST]].to_vec());
                 println!(
                     "SB[{:x}] LB[{:x}] ST[{:x}]",
