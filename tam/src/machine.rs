@@ -199,63 +199,97 @@ impl TAM {
     }
 
     fn exec_call(&mut self, instr: Instruction) -> TAMResult<()> {
-        if (instr.r as usize) == PB {
-            match instr.d {
-                1 => self.call_id(),
-                2 => self.call_not(),
-                3 => self.call_and(),
-                4 => self.call_or(),
-                5 => self.call_inc(),
-                6 => self.call_dec(),
-                7 => self.call_neg(),
-                8 => self.call_add(),
-                9 => self.call_sub(),
-                10 => self.call_mul(),
-                11 => self.call_div()?,
-                12 => self.call_mod()?,
-                13 => self.call_lt(),
-                14 => self.call_le(),
-                15 => self.call_ge(),
-                16 => self.call_gt(),
-                21 => self.call_get()?,
-                22 => self.call_put(),
-                23 => self.call_geteol(),
-                24 => self.call_puteol(),
-                25 => self.call_getint(),
-                26 => self.call_putint(),
-                27 => self.call_new(),
-                _ => (),
-            }
-            Ok(())
+        if instr.r as usize == PB && instr.d > 0 && instr.d < 28 {
+            self.exec_call_primitive(instr.d)
         } else {
-            let addr = self.get_addr(instr);
-            if addr >= self.registers[CT] {
-                return Err(TAMError::SegmentationFault(self.registers[CP] - 1, addr));
-            }
-
-            let static_link = self.registers[instr.n as usize];
-            let dynamic_link = self.registers[LB];
-            let ret_addr = self.registers[CP];
-
-            self.push_data(static_link as i16);
-            self.push_data(dynamic_link as i16);
-            self.push_data(ret_addr as i16);
-            self.check_stack()?;
-
-            self.registers[LB] = self.registers[ST] - 3;
-            self.registers[CP] = addr;
-
-            if self.trace {
-                println!("          slnk: {:08x}", self.data[self.registers[LB]]);
-                println!("          dlnk: {:08x}", self.data[self.registers[LB] + 1]);
-                println!("          radr: {:08x}", self.data[self.registers[LB] + 2]);
-            }
-            Ok(())
+            self.exec_call_nonprimitive(instr)
         }
     }
 
-    fn exec_calli(&mut self, _instr: Instruction) -> TAMResult<()> {
-        todo!("calli not implemented yet");
+    fn exec_call_primitive(&mut self, off: i16) -> TAMResult<()> {
+        match off {
+            1 => self.call_id(),
+            2 => self.call_not(),
+            3 => self.call_and(),
+            4 => self.call_or(),
+            5 => self.call_inc(),
+            6 => self.call_dec(),
+            7 => self.call_neg(),
+            8 => self.call_add(),
+            9 => self.call_sub(),
+            10 => self.call_mul(),
+            11 => self.call_div()?,
+            12 => self.call_mod()?,
+            13 => self.call_lt(),
+            14 => self.call_le(),
+            15 => self.call_ge(),
+            16 => self.call_gt(),
+            17 => self.call_eq(),
+            18 => self.call_ne(),
+            19 => todo!("implement eol primitive"),
+            20 => todo!("implement eof primitive"),
+            21 => self.call_get()?,
+            22 => self.call_put(),
+            23 => self.call_geteol(),
+            24 => self.call_puteol(),
+            25 => self.call_getint(),
+            26 => self.call_putint(),
+            27 => self.call_new(),
+            _ => (),
+        }
+        Ok(())
+    }
+
+    fn exec_call_nonprimitive(&mut self, instr: Instruction) -> TAMResult<()> {
+        let addr = self.get_addr(instr);
+        if addr >= self.registers[CT] {
+            return Err(TAMError::SegmentationFault(self.registers[CP] - 1, addr));
+        }
+
+        let static_link = self.registers[instr.n as usize];
+        let dynamic_link = self.registers[LB];
+        let ret_addr = self.registers[CP];
+
+        self.push_data(static_link as i16);
+        self.push_data(dynamic_link as i16);
+        self.push_data(ret_addr as i16);
+        self.check_stack()?;
+
+        self.registers[LB] = self.registers[ST] - 3;
+        self.registers[CP] = addr;
+
+        if self.trace {
+            println!("          slnk: {:08x}", self.data[self.registers[LB]]);
+            println!("          dlnk: {:08x}", self.data[self.registers[LB] + 1]);
+            println!("          radr: {:08x}", self.data[self.registers[LB] + 2]);
+        }
+        Ok(())
+    }
+
+    fn exec_calli(&mut self, _: Instruction) -> TAMResult<()> {
+        let addr = self.pop_data() as usize;
+        if addr >= self.registers[CT] {
+            return Err(TAMError::SegmentationFault(self.registers[CP] - 1, addr));
+        }
+
+        let static_link = self.pop_data();
+        let dynamic_link = self.registers[LB];
+        let ret_addr = self.registers[CP];
+
+        self.push_data(static_link as i16);
+        self.push_data(dynamic_link as i16);
+        self.push_data(ret_addr as i16);
+        self.check_stack()?;
+
+        self.registers[LB] = self.registers[ST] - 3;
+        self.registers[CP] = addr;
+
+        if self.trace {
+            println!("          slnk: {:08x}", self.data[self.registers[LB]]);
+            println!("          dlnk: {:08x}", self.data[self.registers[LB] + 1]);
+            println!("          radr: {:08x}", self.data[self.registers[LB] + 2]);
+        }
+        Ok(())
     }
 
     fn exec_return(&mut self, instr: Instruction) -> TAMResult<()> {
@@ -354,12 +388,12 @@ impl TAM {
 
     fn call_inc(&mut self) {
         let val = self.pop_data();
-        self.push_data(val + 1);
+        self.push_data(val.overflowing_add(1).0);
     }
 
     fn call_dec(&mut self) {
         let val = self.pop_data();
-        self.push_data(val - 1);
+        self.push_data(val.overflowing_sub(1).0);
     }
 
     fn call_neg(&mut self) {
@@ -471,6 +505,18 @@ impl TAM {
         let n = self.pop_data() as usize;
         self.registers[HT] -= n;
         self.push_data((self.registers[HT] + 1) as i16);
+    }
+
+    fn call_eq(&mut self) {
+        let t2 = self.pop_data();
+        let t1 = self.pop_data();
+        self.push_data(if t1 == t2 { 1 } else { 0 });
+    }
+
+    fn call_ne(&mut self) {
+        let t2 = self.pop_data();
+        let t1 = self.pop_data();
+        self.push_data(if t1 != t2 { 1 } else { 0 });
     }
 }
 
