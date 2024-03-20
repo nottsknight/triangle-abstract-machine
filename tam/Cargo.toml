@@ -8,10 +8,7 @@ repository.workspace = true
 license.workspace = true
 readme = "README.md"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-arbitrary-int = "1.2.7"
 byteorder.workspace = true
 clap.workspace = true
 common = {path = "../common/"}
